@@ -45,7 +45,11 @@ export default function LoginView() {
           title: "Inloggning lyckades",
           description: "Omdirigerar till administratörspanelen...",
         });
-        setLocation("/admin");
+        
+        // Add a small delay before redirection to ensure auth state is updated
+        setTimeout(() => {
+          setLocation("/admin");
+        }, 500);
       } else {
         toast({
           title: "Inloggning misslyckades",
