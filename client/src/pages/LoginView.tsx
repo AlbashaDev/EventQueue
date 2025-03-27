@@ -14,8 +14,8 @@ import logoPath from "@assets/StockholmsStad_logotypeStandardA4_300ppi_svart.jpg
 
 // Define form validation schema
 const formSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  username: z.string().min(1, "Användarnamn krävs"),
+  password: z.string().min(1, "Lösenord krävs"),
 });
 
 export default function LoginView() {
@@ -34,29 +34,34 @@ export default function LoginView() {
   });
 
   // Handle form submission
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoggingIn(true);
     
-    // Simulate network delay
-    setTimeout(() => {
-      const success = login(values.username, values.password);
+    try {
+      const success = await login(values.username, values.password);
       
       if (success) {
         toast({
-          title: "Login successful",
-          description: "Redirecting to admin panel...",
+          title: "Inloggning lyckades",
+          description: "Omdirigerar till administratörspanelen...",
         });
         setLocation("/admin");
       } else {
         toast({
-          title: "Login failed",
-          description: "Invalid username or password",
+          title: "Inloggning misslyckades",
+          description: "Ogiltigt användarnamn eller lösenord",
           variant: "destructive",
         });
       }
-      
+    } catch (error) {
+      toast({
+        title: "Inloggning misslyckades",
+        description: "Ett fel inträffade vid inloggning. Försök igen.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoggingIn(false);
-    }, 800);
+    }
   };
 
   return (
@@ -70,9 +75,9 @@ export default function LoginView() {
               className="h-16" 
             />
           </div>
-          <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
+          <CardTitle className="text-2xl font-bold">Administratörsinloggning</CardTitle>
           <CardDescription>
-            Enter your credentials to access the admin panel
+            Ange dina inloggningsuppgifter för att få tillgång till administratörspanelen
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -83,10 +88,10 @@ export default function LoginView() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Användarnamn</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter username" 
+                        placeholder="Ange användarnamn" 
                         {...field} 
                         autoComplete="username"
                       />
@@ -100,11 +105,11 @@ export default function LoginView() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Lösenord</FormLabel>
                     <FormControl>
                       <Input 
                         type="password" 
-                        placeholder="Enter password" 
+                        placeholder="Ange lösenord" 
                         {...field} 
                         autoComplete="current-password"
                       />
@@ -121,12 +126,12 @@ export default function LoginView() {
                 {isLoggingIn ? (
                   <div className="flex items-center">
                     <div className="animate-spin mr-2 h-4 w-4 border-2 border-b-transparent rounded-full"></div>
-                    Logging in...
+                    Loggar in...
                   </div>
                 ) : (
                   <div className="flex items-center">
                     <Lock className="mr-2 h-4 w-4" />
-                    Login
+                    Logga in
                   </div>
                 )}
               </Button>
@@ -134,7 +139,7 @@ export default function LoginView() {
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center text-sm text-gray-500">
-          <p>Secure access for Jobbtorg Stockholm staff only</p>
+          <p>Säker åtkomst endast för Jobbtorg Stockholms personal</p>
         </CardFooter>
       </Card>
     </main>

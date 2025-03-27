@@ -7,11 +7,13 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
+export async function apiRequest<T = any>(options: {
+  method: string;
+  url: string;
+  data?: unknown;
+}): Promise<T> {
+  const { method, url, data } = options;
+  
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -20,7 +22,7 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  return res;
+  return await res.json() as T;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

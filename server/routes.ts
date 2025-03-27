@@ -318,5 +318,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Login endpoint
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+      
+      // Check if user exists and password matches
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // Check if user is approved
+      if (!user.isApproved) {
+        return res.status(403).json({ error: "Account not approved" });
+      }
+      
+      // Return user data (without password in a real app)
+      res.json({
+        id: user.id,
+        username: user.username,
+        isAdmin: user.isAdmin,
+        isApproved: user.isApproved
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
   return httpServer;
 }

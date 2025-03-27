@@ -65,11 +65,11 @@ export default function UserManagement() {
   // Add user mutation
   const addUser = useMutation({
     mutationFn: async (userData: { username: string; password: string; isAdmin: boolean }) => {
-      return apiRequest(
-        'POST',
-        '/api/users',
-        userData
-      );
+      return apiRequest({
+        method: 'POST',
+        url: '/api/users',
+        data: userData
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
@@ -100,11 +100,11 @@ export default function UserManagement() {
       id: number;
       data: { isApproved?: boolean; isAdmin?: boolean };
     }) => {
-      return apiRequest(
-        'PATCH',
-        `/api/users/${id}`,
+      return apiRequest({
+        method: 'PATCH',
+        url: `/api/users/${id}`,
         data
-      );
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
@@ -125,11 +125,10 @@ export default function UserManagement() {
   // Delete user mutation
   const deleteUser = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(
-        'DELETE',
-        `/api/users/${id}`,
-        undefined
-      );
+      return apiRequest({
+        method: 'DELETE',
+        url: `/api/users/${id}`
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
