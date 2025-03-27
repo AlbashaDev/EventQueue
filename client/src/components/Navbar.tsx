@@ -1,14 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, Lock, LogOut } from "lucide-react";
+import { Menu, Lock, LogOut, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import logoPath from "@assets/StockholmsStad_logotypeStandardA4_300ppi_svart.jpg";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type Language = "en" | "sv";
+
+// Simple translations for the navbar
+const translations = {
+  queueDisplay: {
+    en: "Queue Display",
+    sv: "Kövisning"
+  },
+  adminPanel: {
+    en: "Admin Panel",
+    sv: "Adminpanel"
+  },
+  logout: {
+    en: "Logout",
+    sv: "Logga ut"
+  },
+  language: {
+    en: "Language",
+    sv: "Språk"
+  },
+  english: {
+    en: "English",
+    sv: "Engelska"
+  },
+  swedish: {
+    en: "Swedish",
+    sv: "Svenska"
+  }
+};
 
 export default function Navbar() {
   const [location] = useLocation();
   const { isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [language, setLanguage] = useState<Language>(() => {
+    const savedLanguage = localStorage.getItem("language") as Language;
+    return savedLanguage && (savedLanguage === "en" || savedLanguage === "sv") 
+      ? savedLanguage 
+      : "en";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("language", language);
+    // Dispatch a custom event so other components can react to language changes
+    window.dispatchEvent(new CustomEvent('languageChange', { detail: { language } }));
+  }, [language]);
+
+  const t = (key: string): string => {
+    return translations[key as keyof typeof translations]?.[language] || key;
+  };
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -31,9 +83,8 @@ export default function Navbar() {
               <img 
                 src={logoPath} 
                 alt="Stockholms stad" 
-                className="h-10 mr-3" 
+                className="h-10" 
               />
-              <h1 className="text-xl font-bold text-primary">Jobbtorg Stockholm</h1>
             </div>
           </div>
           <div className="flex items-center">
@@ -43,7 +94,7 @@ export default function Navbar() {
                   variant={isActive('/') ? "default" : "ghost"}
                   className="px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Queue Display
+                  {t('queueDisplay')}
                 </Button>
               </Link>
               <Link href="/admin">
@@ -52,7 +103,7 @@ export default function Navbar() {
                   className="px-3 py-2 rounded-md text-sm font-medium flex items-center"
                 >
                   <Lock className="h-4 w-4 mr-1" />
-                  Admin Panel
+                  {t('adminPanel')}
                 </Button>
               </Link>
               {isAuthenticated && (
@@ -62,9 +113,25 @@ export default function Navbar() {
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4 mr-1" />
-                  Logout
+                  {t('logout')}
                 </Button>
               )}
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="ml-2">
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setLanguage("en")}>
+                    {t('english')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLanguage("sv")}>
+                    {t('swedish')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             
             {/* Mobile menu button */}
@@ -89,7 +156,7 @@ export default function Navbar() {
               variant={isActive('/') ? "default" : "ghost"}
               className="w-full justify-start px-3 py-2 rounded-md text-base font-medium"
             >
-              Queue Display
+              {t('queueDisplay')}
             </Button>
           </Link>
           <Link href="/admin">
@@ -98,7 +165,7 @@ export default function Navbar() {
               className="w-full justify-start px-3 py-2 rounded-md text-base font-medium flex items-center"
             >
               <Lock className="h-4 w-4 mr-1" />
-              Admin Panel
+              {t('adminPanel')}
             </Button>
           </Link>
           {isAuthenticated && (
@@ -108,9 +175,31 @@ export default function Navbar() {
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-1" />
-              Logout
+              {t('logout')}
             </Button>
           )}
+          
+          <div className="px-3 py-2 mt-4">
+            <div className="text-sm font-medium text-gray-500 mb-2">
+              {t('language')}
+            </div>
+            <div className="flex space-x-2">
+              <Button 
+                variant={language === "en" ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setLanguage("en")}
+              >
+                {t('english')}
+              </Button>
+              <Button 
+                variant={language === "sv" ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setLanguage("sv")}
+              >
+                {t('swedish')}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </nav>
