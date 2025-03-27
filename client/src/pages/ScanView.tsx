@@ -26,13 +26,16 @@ export default function ScanView() {
   // Add new number mutation
   const addToQueueMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/queue/new', null);
+      const res = await apiRequest({
+        method: 'POST',
+        url: '/api/queue/new'
+      });
       return await res.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Success",
-        description: `You have been assigned number ${data.number}`,
+        title: "Framgång",
+        description: `Du har tilldelats nummer ${data.number}`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/queue/status'] });
       
@@ -41,8 +44,8 @@ export default function ScanView() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Fel",
+        description: "Ett fel uppstod. Försök igen.",
         variant: "destructive",
       });
     }
@@ -51,6 +54,7 @@ export default function ScanView() {
   // If no number is provided, generate a new one
   useEffect(() => {
     if (!number && !addToQueueMutation.isPending) {
+      console.log("No number provided, generating a new queue number...");
       addToQueueMutation.mutate();
     }
   }, [number, addToQueueMutation]);
@@ -70,15 +74,15 @@ export default function ScanView() {
     let estimatedWaitTime = '';
     
     if (waitTimeMinutes === 0) {
-      estimatedWaitTime = 'You\'re next!';
+      estimatedWaitTime = 'Du är näst på tur!';
     } else if (waitTimeMinutes === 1) {
-      estimatedWaitTime = '~1 minute';
+      estimatedWaitTime = '~1 minut';
     } else if (waitTimeMinutes < 60) {
-      estimatedWaitTime = `~${waitTimeMinutes} minutes`;
+      estimatedWaitTime = `~${waitTimeMinutes} minuter`;
     } else {
       const hours = Math.floor(waitTimeMinutes / 60);
       const minutes = waitTimeMinutes % 60;
-      estimatedWaitTime = `~${hours} hour${hours !== 1 ? 's' : ''}${minutes > 0 ? ` ${minutes} min` : ''}`;
+      estimatedWaitTime = `~${hours} timm${hours !== 1 ? 'ar' : 'e'}${minutes > 0 ? ` ${minutes} min` : ''}`;
     }
     
     return { peopleAhead, estimatedWaitTime };
@@ -94,34 +98,34 @@ export default function ScanView() {
         ) : (
           <Card className="shadow-lg overflow-hidden">
             <div className="bg-primary p-6 text-center">
-              <h2 className="text-2xl font-bold text-white mb-2">Your Queue Number</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Ditt könummer</h2>
               <div className="bg-white rounded-lg p-6 mb-4">
                 <div className="text-6xl leading-none font-bold text-primary">
                   {number}
                 </div>
               </div>
-              <p className="text-white font-medium">Please keep this number handy</p>
+              <p className="text-white font-medium">Ha detta nummer tillgängligt</p>
             </div>
             
             <CardContent className="p-6">
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-neutral-dark mb-2">Queue Status</h3>
+                <h3 className="text-lg font-semibold text-neutral-dark mb-2">Köstatus</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-100 rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-500 mb-1">Current Number</p>
+                    <p className="text-sm text-gray-500 mb-1">Aktuellt nummer</p>
                     <p className="text-2xl font-bold text-primary">
                       {queueStatus?.currentNumber || '—'}
                     </p>
                   </div>
                   <div className="bg-gray-100 rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-500 mb-1">People Ahead</p>
+                    <p className="text-sm text-gray-500 mb-1">Personer före dig</p>
                     <p className="text-2xl font-bold text-primary">{peopleAhead}</p>
                   </div>
                 </div>
               </div>
               
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-neutral-dark mb-2">Estimated Wait Time</h3>
+                <h3 className="text-lg font-semibold text-neutral-dark mb-2">Uppskattad väntetid</h3>
                 <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center">
                   <Clock className="text-primary mr-2 h-5 w-5" />
                   <span className="text-xl font-bold text-primary">{estimatedWaitTime}</span>
@@ -131,14 +135,14 @@ export default function ScanView() {
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center text-gray-600 mb-4">
                   <CheckCircle className="text-secondary mr-2 h-5 w-5" />
-                  <span>We'll notify you when your number is close to being called</span>
+                  <span>Vi meddelar dig när ditt nummer snart blir uppropat</span>
                 </div>
                 <Button 
                   className="w-full flex items-center justify-center"
                   onClick={() => refetch()}
                 >
                   <RefreshCw className="mr-2 h-5 w-5" />
-                  Refresh Status
+                  Uppdatera status
                 </Button>
               </div>
             </CardContent>
