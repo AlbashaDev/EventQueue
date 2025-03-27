@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,12 +6,15 @@ import NotFound from "@/pages/not-found";
 import DisplayView from "@/pages/DisplayView";
 import AdminView from "@/pages/AdminView";
 import ScanView from "@/pages/ScanView";
+import LoginView from "@/pages/LoginView";
 import Navbar from "@/components/Navbar";
 import { useEffect, useState } from "react";
 import ToastNotification from "@/components/ToastNotification";
+import { useAuth } from "@/hooks/useAuth";
 
 function Router() {
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
   const [previousNumber, setPreviousNumber] = useState<number | null>(null);
   const [currentNumber, setCurrentNumber] = useState<number>(0);
   const [toast, setToast] = useState<{ visible: boolean, message: string, type: 'success' | 'error' }>({
@@ -118,7 +121,10 @@ function Router() {
       <Navbar />
       <Switch>
         <Route path="/" component={DisplayView} />
-        <Route path="/admin" component={AdminView} />
+        <Route path="/login" component={LoginView} />
+        <Route path="/admin">
+          {isAuthenticated ? <AdminView /> : <Redirect to="/login" />}
+        </Route>
         <Route path="/scan/:number?" component={ScanView} />
         <Route component={NotFound} />
       </Switch>

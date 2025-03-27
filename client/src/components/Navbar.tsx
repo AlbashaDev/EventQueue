@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, Lock, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import logoPath from "@assets/StockholmsStad_logotypeStandardA4_300ppi_svart.jpg";
 
 export default function Navbar() {
   const [location] = useLocation();
+  const { isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -14,6 +17,10 @@ export default function Navbar() {
   const isActive = (path: string) => {
     return location === path;
   };
+  
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <nav className="bg-white shadow">
@@ -21,7 +28,12 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <h1 className="text-xl font-bold text-primary">Queue Management System</h1>
+              <img 
+                src={logoPath} 
+                alt="Stockholms stad" 
+                className="h-10 mr-3" 
+              />
+              <h1 className="text-xl font-bold text-primary">Jobbtorg Stockholm</h1>
             </div>
           </div>
           <div className="flex items-center">
@@ -37,19 +49,22 @@ export default function Navbar() {
               <Link href="/admin">
                 <Button 
                   variant={isActive('/admin') ? "default" : "ghost"}
-                  className="px-3 py-2 rounded-md text-sm font-medium"
+                  className="px-3 py-2 rounded-md text-sm font-medium flex items-center"
                 >
+                  <Lock className="h-4 w-4 mr-1" />
                   Admin Panel
                 </Button>
               </Link>
-              <Link href="/scan">
+              {isAuthenticated && (
                 <Button 
-                  variant={isActive('/scan') ? "default" : "ghost"}
-                  className="px-3 py-2 rounded-md text-sm font-medium"
+                  variant="outline"
+                  className="px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  onClick={handleLogout}
                 >
-                  Scan QR
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Logout
                 </Button>
-              </Link>
+              )}
             </div>
             
             {/* Mobile menu button */}
@@ -80,19 +95,22 @@ export default function Navbar() {
           <Link href="/admin">
             <Button 
               variant={isActive('/admin') ? "default" : "ghost"}
-              className="w-full justify-start px-3 py-2 rounded-md text-base font-medium"
+              className="w-full justify-start px-3 py-2 rounded-md text-base font-medium flex items-center"
             >
+              <Lock className="h-4 w-4 mr-1" />
               Admin Panel
             </Button>
           </Link>
-          <Link href="/scan">
+          {isAuthenticated && (
             <Button 
-              variant={isActive('/scan') ? "default" : "ghost"}
-              className="w-full justify-start px-3 py-2 rounded-md text-base font-medium"
+              variant="outline"
+              className="w-full justify-start px-3 py-2 rounded-md text-base font-medium flex items-center"
+              onClick={handleLogout}
             >
-              Scan QR
+              <LogOut className="h-4 w-4 mr-1" />
+              Logout
             </Button>
-          </Link>
+          )}
         </div>
       </div>
     </nav>
