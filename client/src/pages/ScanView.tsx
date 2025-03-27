@@ -39,8 +39,14 @@ export default function ScanView() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/queue/status'] });
       
-      // Redirect to the scan page with the number
-      setLocation(`/scan/${data.number}`);
+      // Use direct window.location.href instead of wouter's setLocation
+      // for better compatibility, especially with QR code scanning
+      if (number === "qr") {
+        window.location.href = `/scan/${data.number}`;
+      } else if (!number) {
+        // Only redirect if we're on a default /scan route without number
+        setLocation(`/scan/${data.number}`);
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -51,23 +57,41 @@ export default function ScanView() {
     }
   });
 
-  // If no number is provided, generate a new one
+  // Check if this is a QR scan or existing number view
   useEffect(() => {
-    if (!number && !addToQueueMutation.isPending) {
+    // Handle "qr" special route - generate a new number once without auto-refreshing
+    if (number === "qr" && !addToQueueMutation.isPending) {
+      console.log("QR Code scan detected, generating a new queue number...");
+      addToQueueMutation.mutate();
+    } 
+    // If no number at all is provided, still generate a new one (for direct /scan access)
+    else if (!number && !addToQueueMutation.isPending) {
       console.log("No number provided, generating a new queue number...");
       addToQueueMutation.mutate();
     }
   }, [number, addToQueueMutation]);
 
+  // Calculate effective number to use (either from URL or from mutation response)
+  const getEffectiveNumber = () => {
+    if (number === "qr" || isNaN(parseInt(number || ""))) {
+      return addToQueueMutation.data?.number;
+    }
+    return parseInt(number as string);
+  };
+
   // If we have a number and queue status, calculate queue position and wait time
   const queuePosition = () => {
-    if (!queueStatus || !number) return { peopleAhead: 0, estimatedWaitTime: '0 minutes' };
+    if (!queueStatus) return { peopleAhead: 0, estimatedWaitTime: '0 minuter' };
     
-    const numericNumber = parseInt(number);
-    const currentNumber = queueStatus.currentNumber;
+    const effectiveNumber = getEffectiveNumber();
+    if (!effectiveNumber) return { peopleAhead: 0, estimatedWaitTime: '0 minuter' };
+    
+    const currentNumber = queueStatus.currentNumber || 0;
     
     // Count how many numbers are ahead in the queue
-    const peopleAhead = queueStatus.nextNumbers.filter(n => n < numericNumber).length;
+    const peopleAhead = (queueStatus.nextNumbers || [])
+      .filter(n => n < effectiveNumber)
+      .length;
     
     // Estimate wait time based on people ahead (assuming 2 minutes per person)
     const waitTimeMinutes = peopleAhead * 2;
@@ -101,7 +125,10 @@ export default function ScanView() {
               <h2 className="text-2xl font-bold text-white mb-2">Ditt könummer</h2>
               <div className="bg-white rounded-lg p-6 mb-4">
                 <div className="text-6xl leading-none font-bold text-primary">
-                  {number}
+                  {/* If number is "qr" or not a valid numeric string, show the data from the mutation response */}
+                  {number === "qr" || isNaN(parseInt(number || "")) 
+                    ? (addToQueueMutation.data?.number || "...") 
+                    : number}
                 </div>
               </div>
               <p className="text-white font-medium">Ha detta nummer tillgängligt</p>
