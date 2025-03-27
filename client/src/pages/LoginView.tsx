@@ -46,9 +46,11 @@ export default function LoginView() {
           description: "Omdirigerar till administratörspanelen...",
         });
         
-        // Add a small delay before redirection to ensure auth state is updated
+        // Use direct window location redirection instead of wouter's setLocation
+        // This forces a full page refresh which should properly load the new route
+        console.log("Redirecting to admin panel using window.location...");
         setTimeout(() => {
-          setLocation("/admin");
+          window.location.href = "/admin";
         }, 500);
       } else {
         toast({
