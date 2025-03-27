@@ -231,5 +231,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Management API
+  
+  // Get all users
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = await storage.listUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+  
+  // Create a new user
+  app.post("/api/users", async (req, res) => {
+    try {
+      const { username, password, isAdmin } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+      
+      // Check if username exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      
+      // Create the user
+      const user = await storage.createUser({
+        username,
+        password,
+        isAdmin: isAdmin === true,
+        isApproved: false, // New users need approval
+      });
+      
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+  
+  // Update user (e.g., approve user)
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { isApproved, isAdmin } = req.body;
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const updatedUser = await storage.updateUser(id, {
+        isApproved: typeof isApproved === 'boolean' ? isApproved : undefined,
+        isAdmin: typeof isAdmin === 'boolean' ? isAdmin : undefined,
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+  
+  // Delete user
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const deleted = await storage.deleteUser(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
   return httpServer;
 }

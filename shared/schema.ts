@@ -1,21 +1,17 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
-// User schema remains for compatibility
+// User schema for admin management
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  isApproved: boolean("is_approved").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
 
 // Queue item schema
 export const queueItems = pgTable("queue_items", {
@@ -23,11 +19,34 @@ export const queueItems = pgTable("queue_items", {
   number: integer("number").notNull().unique(),
   status: text("status").notNull().default("waiting"), // waiting, serving, completed
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  userId: integer("user_id").references(() => users.id, { onDelete: 'set null' }),
 });
+
+export const usersRelations = relations(users, ({ many }) => ({
+  queueItems: many(queueItems)
+}));
+
+export const queueItemsRelations = relations(queueItems, ({ one }) => ({
+  user: one(users, {
+    fields: [queueItems.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+  isAdmin: true,
+  isApproved: true,
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
 
 export const insertQueueItemSchema = createInsertSchema(queueItems).pick({
   number: true,
   status: true,
+  userId: true,
 });
 
 export type InsertQueueItem = z.infer<typeof insertQueueItemSchema>;

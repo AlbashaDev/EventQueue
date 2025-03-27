@@ -4,15 +4,23 @@ import {
   type QueueItem, 
   type InsertQueueItem, 
   type QueueSettings,
-  type QueueStatus 
+  type QueueStatus,
+  users,
+  queueItems,
+  queueSettings
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, asc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations (kept for compatibility)
+  // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  listUsers(): Promise<User[]>;
+  updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Queue item operations
   getQueueItem(number: number): Promise<QueueItem | undefined>;
@@ -39,167 +47,206 @@ export interface IStorage {
   getQueueStatus(): Promise<QueueStatus>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private queueItems: Map<number, QueueItem>;
-  private currentNumber: number;
-  private lastNumber: number;
-  private lastCalledAt: Date | null;
-  private soundEnabled: boolean;
-  private visualAlertsEnabled: boolean;
-  private userId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.queueItems = new Map();
-    this.currentNumber = 0;
-    this.lastNumber = 0;
-    this.lastCalledAt = null;
-    this.soundEnabled = true;
-    this.visualAlertsEnabled = true;
-    this.userId = 1;
-  }
+export class DatabaseStorage implements IStorage {
+  private lastCalledAt: Date | null = null;
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+  
+  async listUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(users.username);
+  }
+  
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
+    const result = await db.update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return true;
   }
   
   // Queue item operations
   async getQueueItem(number: number): Promise<QueueItem | undefined> {
-    return this.queueItems.get(number);
+    const result = await db.select().from(queueItems).where(eq(queueItems.number, number));
+    return result[0];
   }
   
   async getQueueItems(): Promise<QueueItem[]> {
-    return Array.from(this.queueItems.values())
-      .sort((a, b) => a.number - b.number);
+    return db.select().from(queueItems).orderBy(asc(queueItems.number));
   }
   
   async getQueueItemsByStatus(status: string): Promise<QueueItem[]> {
-    return Array.from(this.queueItems.values())
-      .filter(item => item.status === status)
-      .sort((a, b) => a.number - b.number);
+    return db.select().from(queueItems)
+      .where(eq(queueItems.status, status))
+      .orderBy(asc(queueItems.number));
   }
   
   async createQueueItem(item: Partial<InsertQueueItem>): Promise<QueueItem> {
     const number = item.number || await this.incrementLastNumber();
-    const now = new Date();
     
-    const queueItem: QueueItem = {
-      id: number, // Use number as ID for simplicity
+    const result = await db.insert(queueItems).values({
       number,
       status: item.status || "waiting",
-      issuedAt: now,
-    };
+      userId: null,
+    }).returning();
     
-    this.queueItems.set(number, queueItem);
-    return queueItem;
+    return result[0];
   }
   
   async updateQueueItemStatus(number: number, status: string): Promise<QueueItem | undefined> {
-    const item = this.queueItems.get(number);
-    if (!item) return undefined;
+    const result = await db.update(queueItems)
+      .set({ status })
+      .where(eq(queueItems.number, number))
+      .returning();
     
-    const updatedItem: QueueItem = {
-      ...item,
-      status,
-    };
-    
-    this.queueItems.set(number, updatedItem);
-    return updatedItem;
+    return result[0];
   }
   
   async deleteQueueItem(number: number): Promise<boolean> {
-    return this.queueItems.delete(number);
+    await db.delete(queueItems).where(eq(queueItems.number, number));
+    return true;
   }
   
   // Queue operations
   async getCurrentNumber(): Promise<number> {
-    return this.currentNumber;
+    const settings = await this.getOrCreateSettings();
+    return settings.currentNumber;
   }
   
   async setCurrentNumber(number: number): Promise<void> {
-    this.currentNumber = number;
     this.lastCalledAt = new Date();
     
-    // Update the status of the current number
+    await db.update(queueSettings)
+      .set({ currentNumber: number })
+      .where(eq(queueSettings.id, 1));
+    
+    // Update the status of the current number if > 0
     if (number > 0) {
       await this.updateQueueItemStatus(number, "serving");
     }
   }
   
   async getLastNumber(): Promise<number> {
-    return this.lastNumber;
+    const settings = await this.getOrCreateSettings();
+    return settings.lastNumber;
   }
   
   async incrementLastNumber(): Promise<number> {
-    this.lastNumber += 1;
-    return this.lastNumber;
+    const settings = await this.getOrCreateSettings();
+    const newLastNumber = settings.lastNumber + 1;
+    
+    await db.update(queueSettings)
+      .set({ lastNumber: newLastNumber })
+      .where(eq(queueSettings.id, 1));
+    
+    return newLastNumber;
   }
   
   async resetQueue(): Promise<void> {
-    this.currentNumber = 0;
-    this.lastNumber = 0;
     this.lastCalledAt = null;
-    this.queueItems.clear();
+    
+    // Reset queue settings
+    await db.update(queueSettings)
+      .set({ 
+        currentNumber: 0, 
+        lastNumber: 0,
+        resetDate: new Date()
+      })
+      .where(eq(queueSettings.id, 1));
+    
+    // Delete all queue items
+    await db.delete(queueItems);
   }
   
   // Queue settings
   async getSoundEnabled(): Promise<boolean> {
-    return this.soundEnabled;
+    const settings = await this.getOrCreateSettings();
+    return settings.soundEnabled;
   }
   
   async setSoundEnabled(enabled: boolean): Promise<void> {
-    this.soundEnabled = enabled;
+    await db.update(queueSettings)
+      .set({ soundEnabled: enabled })
+      .where(eq(queueSettings.id, 1));
   }
   
   async getVisualAlertsEnabled(): Promise<boolean> {
-    return this.visualAlertsEnabled;
+    const settings = await this.getOrCreateSettings();
+    return settings.visualAlertsEnabled;
   }
   
   async setVisualAlertsEnabled(enabled: boolean): Promise<void> {
-    this.visualAlertsEnabled = enabled;
+    await db.update(queueSettings)
+      .set({ visualAlertsEnabled: enabled })
+      .where(eq(queueSettings.id, 1));
+  }
+  
+  // Helper to get or create settings
+  private async getOrCreateSettings(): Promise<QueueSettings> {
+    const existingSettings = await db.select().from(queueSettings);
+    
+    if (existingSettings.length === 0) {
+      const newSettings = await db.insert(queueSettings)
+        .values({
+          id: 1,
+          currentNumber: 0,
+          lastNumber: 0,
+          soundEnabled: true,
+          visualAlertsEnabled: true,
+          resetDate: new Date(),
+        })
+        .returning();
+      
+      return newSettings[0];
+    }
+    
+    return existingSettings[0];
   }
   
   // Queue status
   async getQueueStatus(): Promise<QueueStatus> {
+    const currentNumber = await this.getCurrentNumber();
     const waitingItems = await this.getQueueItemsByStatus("waiting");
     const nextNumbers = waitingItems.map(item => item.number);
+    const allItems = await this.getQueueItems();
     
     return {
-      currentNumber: this.currentNumber,
+      currentNumber,
       nextNumbers,
       waitingCount: waitingItems.length,
-      queueItems: Array.from(this.queueItems.values()).map(item => ({
+      queueItems: allItems.map(item => ({
         number: item.number,
         status: item.status,
-        issuedAt: item.issuedAt.toLocaleTimeString('en-US', { 
+        issuedAt: item.issuedAt.toLocaleTimeString('sv-SE', { 
           hour: 'numeric', 
           minute: '2-digit',
-          hour12: true 
         }),
       })),
       lastCalledAt: this.lastCalledAt ? 
-        this.lastCalledAt.toLocaleTimeString('en-US', { 
+        this.lastCalledAt.toLocaleTimeString('sv-SE', { 
           hour: 'numeric', 
           minute: '2-digit',
-          hour12: true 
         }) : undefined,
     };
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
