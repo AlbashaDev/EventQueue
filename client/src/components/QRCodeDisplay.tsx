@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Info } from "lucide-react";
-import { QRCodeSVG } from "react-qr-code";
+import QRCode from "react-qr-code";
 
 interface QRCodeDisplayProps {
   className?: string;
@@ -37,7 +37,7 @@ export default function QRCodeDisplay({ className = "" }: QRCodeDisplayProps) {
           <div className="md:w-1/3 flex justify-center">
             <div className="bg-white border-2 border-primary p-3 rounded-lg">
               <div className="w-48 h-48 bg-white flex justify-center items-center">
-                <QRCodeSVG 
+                <QRCode 
                   value={getQRCodeUrl()}
                   size={200}
                   level="H"
