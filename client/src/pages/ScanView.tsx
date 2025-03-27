@@ -9,6 +9,19 @@ import { Clock, CheckCircle, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
+// Define the queue status type to match the API response
+interface QueueStatus {
+  currentNumber: number;
+  nextNumbers: number[];
+  waitingCount: number;
+  queueItems: {
+    number: number;
+    status: string;
+    issuedAt: string;
+  }[];
+  lastCalledAt?: string;
+}
+
 export default function ScanView() {
   const { number } = useParams();
   const [, setLocation] = useLocation();
@@ -19,7 +32,7 @@ export default function ScanView() {
     data: queueStatus, 
     isLoading,
     refetch
-  } = useQuery({ 
+  } = useQuery<QueueStatus>({ 
     queryKey: ['/api/queue/status'],
   });
 
@@ -41,7 +54,12 @@ export default function ScanView() {
       
       // Use direct window.location.href instead of wouter's setLocation
       // for better compatibility, especially with QR code scanning
-      if (number === "qr") {
+      
+      // Check if the number is "qr" or starts with "qr/"
+      const isQrScan = number === "qr" || (typeof number === "string" && number.startsWith("qr/"));
+      
+      if (isQrScan) {
+        // Use window.location.href for better compatibility with QR code scanning
         window.location.href = `/scan/${data.number}`;
       } else if (!number) {
         // Only redirect if we're on a default /scan route without number
@@ -59,8 +77,11 @@ export default function ScanView() {
 
   // Check if this is a QR scan or existing number view
   useEffect(() => {
-    // Handle "qr" special route - generate a new number once without auto-refreshing
-    if (number === "qr" && !addToQueueMutation.isPending) {
+    // Check if the number is either "qr" or starts with "qr/"
+    const isQrScan = number === "qr" || (typeof number === "string" && number.startsWith("qr/"));
+    
+    // Handle QR code scans - generate a new number once without auto-refreshing
+    if (isQrScan && !addToQueueMutation.isPending) {
       console.log("QR Code scan detected, generating a new queue number...");
       addToQueueMutation.mutate();
     } 
@@ -73,7 +94,10 @@ export default function ScanView() {
 
   // Calculate effective number to use (either from URL or from mutation response)
   const getEffectiveNumber = () => {
-    if (number === "qr" || isNaN(parseInt(number || ""))) {
+    // Check if the number is either "qr" or starts with "qr/"
+    const isQrScan = number === "qr" || (typeof number === "string" && number.startsWith("qr/"));
+    
+    if (isQrScan || !number || isNaN(parseInt(number || ""))) {
       return addToQueueMutation.data?.number;
     }
     return parseInt(number as string);
@@ -90,7 +114,7 @@ export default function ScanView() {
     
     // Count how many numbers are ahead in the queue
     const peopleAhead = (queueStatus.nextNumbers || [])
-      .filter(n => n < effectiveNumber)
+      .filter((n: number) => n < effectiveNumber)
       .length;
     
     // Estimate wait time based on people ahead (assuming 2 minutes per person)
@@ -125,10 +149,7 @@ export default function ScanView() {
               <h2 className="text-2xl font-bold text-white mb-2">Ditt könummer</h2>
               <div className="bg-white rounded-lg p-6 mb-4">
                 <div className="text-6xl leading-none font-bold text-primary">
-                  {/* If number is "qr" or not a valid numeric string, show the data from the mutation response */}
-                  {number === "qr" || isNaN(parseInt(number || "")) 
-                    ? (addToQueueMutation.data?.number || "...") 
-                    : number}
+                  {getEffectiveNumber() || "..."}
                 </div>
               </div>
               <p className="text-white font-medium">Ha detta nummer tillgängligt</p>

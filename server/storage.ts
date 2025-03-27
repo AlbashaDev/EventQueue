@@ -121,8 +121,22 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteQueueItem(number: number): Promise<boolean> {
-    await db.delete(queueItems).where(eq(queueItems.number, number));
-    return true;
+    try {
+      // First verify the item exists
+      const item = await this.getQueueItem(number);
+      
+      if (!item) {
+        return false;
+      }
+      
+      // Then delete it
+      await db.delete(queueItems).where(eq(queueItems.number, number));
+      
+      return true;
+    } catch (error) {
+      console.error(`Error deleting queue item ${number}:`, error);
+      return false;
+    }
   }
   
   // Queue operations
@@ -161,19 +175,29 @@ export class DatabaseStorage implements IStorage {
   }
   
   async resetQueue(): Promise<void> {
-    this.lastCalledAt = null;
-    
-    // Reset queue settings
-    await db.update(queueSettings)
-      .set({ 
-        currentNumber: 0, 
-        lastNumber: 0,
-        resetDate: new Date()
-      })
-      .where(eq(queueSettings.id, 1));
-    
-    // Delete all queue items
-    await db.delete(queueItems);
+    try {
+      this.lastCalledAt = null;
+      
+      // First, delete all queue items with a transaction
+      await db.transaction(async (tx) => {
+        // Delete all queue items first
+        await tx.delete(queueItems);
+        
+        // Then reset queue settings
+        await tx.update(queueSettings)
+          .set({ 
+            currentNumber: 0, 
+            lastNumber: 0,
+            resetDate: new Date()
+          })
+          .where(eq(queueSettings.id, 1));
+      });
+      
+      console.log("Queue reset successful");
+    } catch (error) {
+      console.error("Error resetting queue:", error);
+      throw error; // Re-throw to let the API handle the error response
+    }
   }
   
   // Queue settings

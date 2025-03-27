@@ -28,14 +28,12 @@ export default function QRCodeDisplay({ className = "" }: QRCodeDisplayProps) {
 
   // Generate URL for QR code that will lead to the scan page with a direct QR code flag
   const getQRCodeUrl = () => {
-    // If on localhost, use localhost
-    // Otherwise use the host from window.location
-    const host = window.location.hostname === 'localhost' 
-      ? `${window.location.protocol}//${window.location.host}`
-      : window.location.origin;
+    // Get the origin (protocol + hostname + port)
+    const origin = window.location.origin;
     
-    // Use a special route for QR code scans that bypasses auto-generation logic
-    return `${host}/scan/qr`;
+    // Generate a timestamped, single-use QR code to prevent scanning issues
+    // The timestamp ensures uniqueness for each refresh
+    return `${origin}/scan/qr/${timestamp}`;
   };
 
   return (

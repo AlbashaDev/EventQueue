@@ -126,6 +126,7 @@ function Router() {
           {isAuthenticated ? <AdminView /> : <Redirect to="/login" />}
         </Route>
         <Route path="/scan/:number?" component={ScanView} />
+        <Route path="/scan/qr/:timestamp?" component={ScanView} />
         <Route component={NotFound} />
       </Switch>
       
