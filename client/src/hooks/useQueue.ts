@@ -22,8 +22,11 @@ export function useQueue() {
   // Add new number to queue
   const addToQueueMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/queue/new', null);
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: '/api/queue/new'
+      });
+      return res;
     },
     onSuccess: (data) => {
       toast({
@@ -35,17 +38,21 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to create queue number.",
         variant: "destructive",
       });
+      console.error("Add to queue error:", error);
     }
   });
 
   // Call next number
   const callNextMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/queue/next', null);
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: '/api/queue/next'
+      });
+      return res;
     },
     onSuccess: (data) => {
       if (data.currentNumber) {
@@ -66,17 +73,21 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to call next number.",
         variant: "destructive",
       });
+      console.error("Call next error:", error);
     }
   });
 
   // Call specific number
   const callSpecificMutation = useMutation({
     mutationFn: async (number: number) => {
-      const res = await apiRequest('POST', `/api/queue/call/${number}`, null);
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: `/api/queue/call/${number}`
+      });
+      return res;
     },
     onSuccess: (data) => {
       toast({
@@ -95,17 +106,21 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to call specific number.",
         variant: "destructive",
       });
+      console.error("Call specific error:", error);
     }
   });
 
   // Mark number as complete
   const completeNumberMutation = useMutation({
     mutationFn: async (number: number) => {
-      const res = await apiRequest('POST', `/api/queue/complete/${number}`, null);
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: `/api/queue/complete/${number}`
+      });
+      return res;
     },
     onSuccess: () => {
       toast({
@@ -117,17 +132,21 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to mark number as completed.",
         variant: "destructive",
       });
+      console.error("Complete number error:", error);
     }
   });
 
   // Remove number from queue
   const removeNumberMutation = useMutation({
     mutationFn: async (number: number) => {
-      const res = await apiRequest('DELETE', `/api/queue/item/${number}`, null);
-      return await res.json();
+      const res = await apiRequest({
+        method: 'DELETE',
+        url: `/api/queue/item/${number}`
+      });
+      return res;
     },
     onSuccess: () => {
       toast({
@@ -139,17 +158,21 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to remove number from queue.",
         variant: "destructive",
       });
+      console.error("Remove number error:", error);
     }
   });
 
   // Reset queue
   const resetQueueMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/queue/reset', null);
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: '/api/queue/reset'
+      });
+      return res;
     },
     onSuccess: () => {
       toast({
@@ -161,17 +184,22 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to reset queue. Please try again.",
         variant: "destructive",
       });
+      console.error("Reset queue error:", error);
     }
   });
 
   // Toggle sound
   const toggleSoundMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
-      const res = await apiRequest('POST', '/api/settings/sound', { enabled });
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: '/api/settings/sound',
+        data: { enabled }
+      });
+      return res;
     },
     onSuccess: (_, variables) => {
       setIsAudioEnabled(variables);
@@ -183,17 +211,22 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to update sound settings. Please try again.",
         variant: "destructive",
       });
+      console.error("Toggle sound error:", error);
     }
   });
 
   // Toggle visual alerts
   const toggleVisualAlertsMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
-      const res = await apiRequest('POST', '/api/settings/visual-alerts', { enabled });
-      return await res.json();
+      const res = await apiRequest({
+        method: 'POST',
+        url: '/api/settings/visual-alerts',
+        data: { enabled }
+      });
+      return res;
     },
     onSuccess: (_, variables) => {
       setIsVisualsEnabled(variables);
@@ -205,9 +238,10 @@ export function useQueue() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to update visual alert settings. Please try again.",
         variant: "destructive",
       });
+      console.error("Toggle visual alerts error:", error);
     }
   });
 

@@ -39,11 +39,15 @@ export default function ScanView() {
   // Add new number mutation
   const addToQueueMutation = useMutation({
     mutationFn: async () => {
+      // Clear any previous localStorage flags to ensure we can generate a new number
+      localStorage.removeItem('has_generated_qr_number');
+      localStorage.removeItem('queue_number_timestamp');
+      
       const res = await apiRequest({
         method: 'POST',
         url: '/api/queue/new'
       });
-      return await res.json();
+      return res;
     },
     onSuccess: (data) => {
       toast({
@@ -52,15 +56,17 @@ export default function ScanView() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/queue/status'] });
       
-      // Use direct window.location.href instead of wouter's setLocation
-      // for better compatibility, especially with QR code scanning
+      // Save timestamp to prevent multiple quick scans
+      const timestamp = new Date().getTime();
+      localStorage.setItem('queue_number_timestamp', timestamp.toString());
+      localStorage.setItem('current_queue_number', data.number.toString());
       
       // Check if the number is "qr" or starts with "qr/"
       const isQrScan = number === "qr" || (typeof number === "string" && number.startsWith("qr/"));
       
       if (isQrScan) {
-        // Use window.location.href for better compatibility with QR code scanning
-        window.location.href = `/scan/${data.number}`;
+        // Use window.location.replace which doesn't add to browser history
+        window.location.replace(`/scan/${data.number}`);
       } else if (!number) {
         // Only redirect if we're on a default /scan route without number
         setLocation(`/scan/${data.number}`);
@@ -72,6 +78,7 @@ export default function ScanView() {
         description: "Ett fel uppstod. Försök igen.",
         variant: "destructive",
       });
+      console.error("Failed to add to queue:", error);
     }
   });
 
@@ -80,16 +87,43 @@ export default function ScanView() {
     // Check if the number is either "qr" or starts with "qr/"
     const isQrScan = number === "qr" || (typeof number === "string" && number.startsWith("qr/"));
     
-    // Handle QR code scans - generate a new number once without auto-refreshing
-    if (isQrScan && !addToQueueMutation.isPending) {
-      console.log("QR Code scan detected, generating a new queue number...");
-      addToQueueMutation.mutate();
-    } 
-    // If no number at all is provided, still generate a new one (for direct /scan access)
-    else if (!number && !addToQueueMutation.isPending) {
-      console.log("No number provided, generating a new queue number...");
+    // If it's a valid number (not a QR scan path), don't generate a new one
+    if (number && !isQrScan && !isNaN(parseInt(number as string))) {
+      console.log("Viewing existing queue number:", number);
+      return;
+    }
+    
+    // Check for timestamp to prevent repeated scans in quick succession
+    const timestampStr = localStorage.getItem('queue_number_timestamp');
+    if (timestampStr) {
+      const timestamp = parseInt(timestampStr);
+      const now = new Date().getTime();
+      
+      // If less than 5 seconds since last scan, don't generate a new number
+      if (now - timestamp < 5000) {
+        const currentNumber = localStorage.getItem('current_queue_number');
+        console.log("Recent scan detected, reusing number:", currentNumber);
+        
+        if (isQrScan && currentNumber) {
+          window.location.replace(`/scan/${currentNumber}`);
+          return;
+        }
+        return;
+      }
+    }
+    
+    // Generate a new number for QR scans or direct /scan access
+    if ((isQrScan || !number) && !addToQueueMutation.isPending) {
+      console.log("Generating a new queue number...");
       addToQueueMutation.mutate();
     }
+    
+    // Component cleanup
+    return () => {
+      // We'll keep timestamps to prevent frequent re-requests
+      // but remove the 'has_generated_qr_number' flag
+      localStorage.removeItem('has_generated_qr_number');
+    };
   }, [number, addToQueueMutation]);
 
   // Calculate effective number to use (either from URL or from mutation response)
