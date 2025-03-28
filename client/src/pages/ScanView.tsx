@@ -172,6 +172,23 @@ export default function ScanView() {
 
   const { peopleAhead, estimatedWaitTime } = queuePosition();
 
+  // Determine if the current user's number is being called
+  const effectiveNumber = getEffectiveNumber();
+  const isMyNumberCalled = effectiveNumber === queueStatus?.currentNumber;
+  
+  // No need for interval-based refresh as WebSockets provide real-time updates
+  
+  // Show notification if my number is called
+  useEffect(() => {
+    if (isMyNumberCalled) {
+      toast({
+        title: "Din tur!",
+        description: "Ditt nummer har kallats. Vänligen gå till receptionen.",
+        duration: 10000, // Show for 10 seconds
+      });
+    }
+  }, [isMyNumberCalled, toast]);
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-md mx-auto">
@@ -179,23 +196,29 @@ export default function ScanView() {
           <Skeleton className="h-[500px] w-full rounded-lg" />
         ) : (
           <Card className="shadow-lg overflow-hidden">
-            <div className="bg-primary p-6 text-center">
-              <h2 className="text-2xl font-bold text-white mb-2">Ditt könummer</h2>
-              <div className="bg-white rounded-lg p-6 mb-4">
-                <div className="text-6xl leading-none font-bold text-primary">
-                  {getEffectiveNumber() || "..."}
+            <div className={`${isMyNumberCalled ? 'bg-green-600' : 'bg-primary'} p-6 text-center transition-colors duration-500`}>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                {isMyNumberCalled ? 'Din tur nu!' : 'Ditt könummer'}
+              </h2>
+              <div className={`${isMyNumberCalled ? 'bg-green-100 border-green-300 border-2' : 'bg-white'} rounded-lg p-6 mb-4 transition-all duration-500`}>
+                <div className={`text-6xl leading-none font-bold ${isMyNumberCalled ? 'text-green-600' : 'text-primary'}`}>
+                  {effectiveNumber || "..."}
                 </div>
               </div>
-              <p className="text-white font-medium">Ha detta nummer tillgängligt</p>
+              <p className="text-white font-medium">
+                {isMyNumberCalled 
+                  ? 'Vänligen gå till receptionen' 
+                  : 'Ha detta nummer tillgängligt'}
+              </p>
             </div>
             
             <CardContent className="p-6">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-neutral-dark mb-2">Köstatus</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className={`${queueStatus?.currentNumber === effectiveNumber ? 'bg-green-100' : 'bg-gray-100'} rounded-lg p-4 text-center transition-colors duration-300`}>
                     <p className="text-sm text-gray-500 mb-1">Aktuellt nummer</p>
-                    <p className="text-2xl font-bold text-primary">
+                    <p className={`text-2xl font-bold ${queueStatus?.currentNumber === effectiveNumber ? 'text-green-600' : 'text-primary'}`}>
                       {queueStatus?.currentNumber || '—'}
                     </p>
                   </div>
@@ -217,15 +240,23 @@ export default function ScanView() {
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center text-gray-600 mb-4">
                   <CheckCircle className="text-secondary mr-2 h-5 w-5" />
-                  <span>Vi meddelar dig när ditt nummer snart blir uppropat</span>
+                  <span>Uppdateras automatiskt - inget behov att uppdatera</span>
                 </div>
-                <Button 
-                  className="w-full flex items-center justify-center"
-                  onClick={() => refetch()}
-                >
-                  <RefreshCw className="mr-2 h-5 w-5" />
-                  Uppdatera status
-                </Button>
+                
+                {isMyNumberCalled && (
+                  <div className="bg-green-100 p-4 rounded-lg mb-4 border border-green-300">
+                    <div className="flex items-center text-green-800">
+                      <CheckCircle className="text-green-600 mr-2 h-5 w-5" />
+                      <span className="font-medium">Din tur! Gå till receptionen nu.</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Adding a live update indicator instead of refresh button */}
+                <div className="flex items-center justify-center text-sm text-gray-500">
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Uppdateras live</span>
+                </div>
               </div>
             </CardContent>
           </Card>
