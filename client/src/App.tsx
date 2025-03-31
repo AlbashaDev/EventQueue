@@ -44,9 +44,11 @@ function Router() {
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
     const reconnectInterval = 3000; // 3 seconds
+    let wsInstance: WebSocket | null = null;
     
     function connectWebSocket() {
       const ws = new WebSocket(wsUrl);
+      wsInstance = ws;
       
       ws.onopen = () => {
         console.log("WebSocket connection established successfully!");
@@ -77,6 +79,13 @@ function Router() {
                 }
               }
             }
+            
+            // Force invalidate the TanStack Query cache to ensure all components refresh
+            console.log("Invalidating queue status query cache due to WebSocket update");
+            queryClient.invalidateQueries({ queryKey: ['/api/queue/status'] });
+            
+            // Dispatch a custom event that components can listen for
+            window.dispatchEvent(new CustomEvent('queue-ws-update'));
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
@@ -98,7 +107,9 @@ function Router() {
           
           setTimeout(() => {
             console.log("Reconnecting...");
-            connectWebSocket();
+            if (wsInstance === ws) { // Only reconnect if this is still the current instance
+              connectWebSocket();
+            }
           }, delay);
         } else {
           console.log("Maximum reconnection attempts reached. Please refresh the page manually.");
@@ -114,9 +125,12 @@ function Router() {
     // Clean up function
     return () => {
       console.log("Closing WebSocket connection...");
-      ws.close();
+      if (ws && wsInstance === ws) {
+        wsInstance = null;
+        ws.close();
+      }
     };
-  }, [location, currentNumber]);
+  }, [location]); // Remove currentNumber dependency
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ visible: true, message, type });

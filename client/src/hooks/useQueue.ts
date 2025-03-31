@@ -14,10 +14,28 @@ export function useQueue() {
   const { 
     data: queueStatus, 
     isLoading,
-    error 
+    error,
+    refetch
   } = useQuery<QueueStatus>({ 
     queryKey: ['/api/queue/status'],
+    refetchInterval: 5000, // Add a fallback refetch every 5 seconds
+    staleTime: 1000, // Consider data stale after 1 second
   });
+  
+  // Set up listener for WebSocket updates
+  useEffect(() => {
+    // Listen for custom event triggered by App component when WebSocket updates are received
+    const handleWebSocketUpdate = () => {
+      console.log("WebSocket update detected in useQueue hook, refetching...");
+      refetch();
+    };
+    
+    window.addEventListener('queue-ws-update', handleWebSocketUpdate);
+    
+    return () => {
+      window.removeEventListener('queue-ws-update', handleWebSocketUpdate);
+    };
+  }, [refetch]);
 
   // Add new number to queue
   const addToQueueMutation = useMutation({
