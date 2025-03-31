@@ -14,7 +14,11 @@ export async function apiRequest<T = any>(options: {
 }): Promise<T> {
   const { method, url, data } = options;
   
-  const res = await fetch(url, {
+  // Determine if we need to prefix the URL with the API URL from env variables
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const fullUrl = url.startsWith('http') ? url : `${apiUrl}${url}`;
+  
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -31,7 +35,12 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    // Determine if we need to prefix the URL with the API URL from env variables
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const url = queryKey[0] as string;
+    const fullUrl = url.startsWith('http') ? url : `${apiUrl}${url}`;
+    
+    const res = await fetch(fullUrl, {
       credentials: "include",
     });
 

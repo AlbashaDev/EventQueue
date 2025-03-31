@@ -25,10 +25,19 @@ function Router() {
 
   // WebSocket connection
   useEffect(() => {
-    // Use the correct path for WebSocket connection
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = window.location.host;
-    const wsUrl = `${wsProtocol}//${wsHost}/ws`; // Using the specific /ws path
+    // Check if we have an API URL from environment variables for production
+    const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+    let wsUrl: string;
+    
+    if (apiUrl) {
+      // For production: replace https:// with wss:// or http:// with ws://
+      wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws';
+    } else {
+      // For development: use the same host
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsHost = window.location.host;
+      wsUrl = `${wsProtocol}//${wsHost}/ws`;
+    }
     
     console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
     

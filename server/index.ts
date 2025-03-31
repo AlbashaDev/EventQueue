@@ -1,8 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { getAllowedOrigins, getPort, isProduction } from "./config";
 
 const app = express();
+
+// Setup CORS for cross-origin requests (important for separate frontend/backend deployments)
+app.use(cors({
+  origin: getAllowedOrigins(),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -56,10 +67,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Use port from config or environment variable (handled by cloud hosting services)
+  const port = getPort();
   server.listen({
     port,
     host: "0.0.0.0",
