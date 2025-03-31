@@ -84,8 +84,10 @@ function Router() {
             console.log("Invalidating queue status query cache due to WebSocket update");
             queryClient.invalidateQueries({ queryKey: ['/api/queue/status'] });
             
-            // Dispatch a custom event that components can listen for
-            window.dispatchEvent(new CustomEvent('queue-ws-update'));
+            // Dispatch a custom event with the queue status data directly
+            window.dispatchEvent(new CustomEvent('queue-ws-update', { 
+              detail: { queueStatus: message.data } 
+            }));
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);

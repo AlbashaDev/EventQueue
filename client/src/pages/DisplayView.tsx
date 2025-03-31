@@ -43,9 +43,10 @@ export default function DisplayView() {
           <span className="text-sm">Uppdateras live</span>
         </div>
         
-        {isLoading ? (
-          // Loading state
-          <div>
+        {/* Always render both states, but with opacity transitions */}
+        <div className="relative">
+          {/* Loading state with fade */}
+          <div className={`transition-opacity duration-300 ${isLoading ? 'opacity-100' : 'opacity-0 absolute inset-0 pointer-events-none'}`}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
                 <Skeleton className="h-[500px] w-full rounded-lg" />
@@ -56,12 +57,13 @@ export default function DisplayView() {
             </div>
             <Skeleton className="h-[250px] w-full mt-8 rounded-lg" />
           </div>
-        ) : (
-          <>
+          
+          {/* Content with fade */}
+          <div className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
             <QueueStatusDisplay queueStatus={queueStatus} />
             <QRCodeDisplay />
-          </>
-        )}
+          </div>
+        </div>
       </main>
     </>
   );

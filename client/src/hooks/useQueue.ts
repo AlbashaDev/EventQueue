@@ -10,32 +10,51 @@ export function useQueue() {
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVisualsEnabled, setIsVisualsEnabled] = useState(true);
 
-  // Get queue status
+  // Use local state to store the latest queue status from WebSocket
+  const [wsQueueStatus, setWsQueueStatus] = useState<QueueStatus | null>(null);
+  
+  // Get queue status from API (fallback for WebSocket)
   const { 
-    data: queueStatus, 
-    isLoading,
+    data: apiQueueStatus, 
+    isLoading: isApiLoading,
     error,
-    refetch
   } = useQuery<QueueStatus>({ 
     queryKey: ['/api/queue/status'],
-    refetchInterval: 5000, // Add a fallback refetch every 5 seconds
-    staleTime: 1000, // Consider data stale after 1 second
+    refetchInterval: 10000, // Only refetch every 10 seconds as a fallback
+    staleTime: 5000, // Consider data stale after 5 seconds
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
   
   // Set up listener for WebSocket updates
   useEffect(() => {
     // Listen for custom event triggered by App component when WebSocket updates are received
-    const handleWebSocketUpdate = () => {
-      console.log("WebSocket update detected in useQueue hook, refetching...");
-      refetch();
+    const handleWebSocketUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.queueStatus) {
+        // Use the queue status data directly from the WebSocket event
+        console.log("WebSocket update received with queue data:", customEvent.detail.queueStatus);
+        setWsQueueStatus(customEvent.detail.queueStatus);
+      }
     };
     
+    // Add event listener
     window.addEventListener('queue-ws-update', handleWebSocketUpdate);
     
     return () => {
       window.removeEventListener('queue-ws-update', handleWebSocketUpdate);
     };
-  }, [refetch]);
+  }, []);
+  
+  // Combine WebSocket data with API data, preferring WebSocket data when available
+  const queueStatus = wsQueueStatus || apiQueueStatus || {
+    currentNumber: 0,
+    nextNumbers: [],
+    waitingCount: 0,
+    queueItems: []
+  };
+  
+  // Calculate loading state - we're only truly loading if we have no data at all
+  const isLoading = isApiLoading && !wsQueueStatus;
 
   // Add new number to queue
   const addToQueueMutation = useMutation({
