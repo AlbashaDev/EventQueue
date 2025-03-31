@@ -10,21 +10,9 @@ interface QueueStatusDisplayProps {
 
 export default function QueueStatusDisplay({ queueStatus, className = "" }: QueueStatusDisplayProps) {
   const { currentNumber, nextNumbers, waitingCount, lastCalledAt } = queueStatus;
-  const [animateNumber, setAnimateNumber] = useState(false);
-  const [previousNumber, setPreviousNumber] = useState<number | null>(null);
   
-  // Trigger animation when current number changes
-  useEffect(() => {
-    if (previousNumber !== null && currentNumber !== previousNumber) {
-      setAnimateNumber(true);
-      const timer = setTimeout(() => {
-        setAnimateNumber(false);
-      }, 5000); // Animation duration
-
-      return () => clearTimeout(timer);
-    }
-    setPreviousNumber(currentNumber);
-  }, [currentNumber, previousNumber]);
+  // Remove all animation states and effects to prevent blinking
+  const animateNumber = false;
   
   // Calculate how long ago the number was called
   const getTimeAgo = (timeString?: string) => {

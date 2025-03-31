@@ -80,11 +80,12 @@ function Router() {
               }
             }
             
-            // Force invalidate the TanStack Query cache to ensure all components refresh
-            console.log("Invalidating queue status query cache due to WebSocket update");
-            queryClient.invalidateQueries({ queryKey: ['/api/queue/status'] });
+            // IMPORTANT: Don't invalidate queries as it causes blinking
+            // Instead, directly update the query cache with the new data
+            console.log("Directly updating queue status in query cache");
+            queryClient.setQueryData(['/api/queue/status'], message.data);
             
-            // Dispatch a custom event with the queue status data directly
+            // Dispatch a custom event with the queue status data
             window.dispatchEvent(new CustomEvent('queue-ws-update', { 
               detail: { queueStatus: message.data } 
             }));
