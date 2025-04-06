@@ -1,18 +1,23 @@
+import { config } from "dotenv";
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { getAllowedOrigins, getPort, isProduction } from "./config";
 
+config();
+
 const app = express();
 
 // Setup CORS for cross-origin requests (important for separate frontend/backend deployments)
-app.use(cors({
-  origin: getAllowedOrigins(),
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: getAllowedOrigins(),
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -69,11 +74,14 @@ app.use((req, res, next) => {
 
   // Use port from config or environment variable (handled by cloud hosting services)
   const port = getPort();
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    }
+  );
 })();
